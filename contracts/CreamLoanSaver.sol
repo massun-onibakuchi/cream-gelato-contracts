@@ -32,7 +32,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     struct ProtectionDataCompute {
         CToken colToken;
         CToken debtToken;
-        uint256 weiPerColToken;
+        uint256 ethPerColToken;
         uint256 wantedHealthFactor;
         uint256 colFactor;
         uint256 totalCollateralInEth;
@@ -84,15 +84,17 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         (uint256 totalCollateralInEth, uint256 totalBorrowInEth, uint256 healthFactor, ) = _getUserAccountData(account);
         (, uint256 collateralFactorMantissa, ) = comptroller.markets(address(protectionData_.colToken));
+
         // check if healthFactor is under threshold
-        if (healthFactor > protectionData_.thresholdHealthFactor) revert("health-factor-is-not-under-threshold");
+        require(collateralFactorMantissa > 0, "collateral-factor-zero");
+        require(healthFactor > protectionData_.thresholdHealthFactor, "health-factor-not-under-threshold");
 
         // Calculate repay amount and debtToken amount to flash borrow
         uint256 borrowColAmt = _calculateColAmtToBorrow(
             ProtectionDataCompute({
                 colToken: protectionData_.colToken,
                 debtToken: protectionData_.debtToken,
-                weiPerColToken: _getUnderlyingPrice(protectionData_.colToken),
+                ethPerColToken: _getUnderlyingPrice(protectionData_.colToken),
                 wantedHealthFactor: protectionData_.wantedHealthFactor,
                 colFactor: collateralFactorMantissa,
                 totalCollateralInEth: totalCollateralInEth,
@@ -101,6 +103,10 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
                 flashLoanFeeBps: FLASH_FEE_BIPS
             })
         );
+
+        require(borrowColAmt > 0, "amount-to-flash-borrow-zero");
+        _requireAcceptableSlipage();
+
         bytes memory swapData = abi.encode(
             protectionData_.colToken.underlying(),
             protectionData_.debtToken.underlying(),
@@ -130,6 +136,14 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         pure
         returns (uint256 borrowColAmt)
     {
+        // @audit calculate amount of collateral to flashborrow
+        // @note
+        // current hf means HF_c,which equals to y/x, wanted hf means HF_w = (y - ∆y*f) / (x-∆y)
+        // we want to get `amount` in collateral token, ∆y means value (in Eth) to redeem,
+        // ∆y = (HF_w * x - y * colFactor) / (HF_w - colFactor * (flashFee + protectionFee))
+        // ∆y = amount * ethPerAsset * colFactor
+        // amount = ∆y / ethPerAsset / colFactor
+
         uint256 borrowColAmtInEth = ((_protectionDataCompute.wantedHealthFactor *
             _protectionDataCompute.totalBorrowInEth) -
             (_protectionDataCompute.totalCollateralInEth * _protectionDataCompute.colFactor)) /
@@ -138,7 +152,14 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
                 (TEN_THOUSAND_BPS + _protectionDataCompute.flashLoanFeeBps + _protectionDataCompute.protectionFeeBps) *
                 1e14);
 
-        borrowColAmt = (borrowColAmtInEth * EXP_SCALE) / _protectionDataCompute.weiPerColToken;
+        borrowColAmt =
+            (borrowColAmtInEth * EXP_SCALE) /
+            _protectionDataCompute.ethPerColToken /
+            _protectionDataCompute.colFactor;
+    }
+
+    function _requireAcceptableSlipage() internal view {
+        // require(, "unacceptable-slipage");
     }
 
     function _swap(
@@ -241,6 +262,9 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     }
 
     /// @notice cream's price oracle proxy wrapper
+    /// e.g underlying asset (uToken) price is $2 and ETH=$3000,
+    /// ETH per uToken = 2/3000 -> wei per uToken =1e18 * 2 / 3000
+    /// if its decimals is x, it is represented as 10**18 * 10**(18-x) * 2/3000
     /// @return price weiPerAsset
     function _getUnderlyingPrice(CToken cToken) internal view override returns (uint256 price) {
         price = oracle.getUnderlyingPrice(cToken);
