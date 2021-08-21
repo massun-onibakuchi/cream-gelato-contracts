@@ -4,14 +4,14 @@ pragma solidity 0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
 import "./gelato/PokeMeReady.sol";
+import "./CreamAccountDataProvider.sol";
 
 import "./interfaces/ILoanSaver.sol";
 import "./interfaces/IFlashloanReceiver.sol";
 import "./interfaces/IPriceOracle.sol";
 import { CTokenInterface as CToken, ICTokenFlashLoan } from "./interfaces/CTokenInterface.sol";
-
-import "./CreamAccountDataProvider.sol";
 
 contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IFlashloanReceiver {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -53,6 +53,8 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     mapping(address => EnumerableSet.Bytes32Set) internal _createdProtections;
     mapping(bytes32 => ProtectionData) internal _protectionData;
+
+    receive() external payable {}
 
     constructor(
         address payable _pokeMe,
@@ -167,12 +169,31 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         address tokenToBuy,
         uint256 amountToSell
     ) internal {
-        address[] memory path = new address[](3);
-        path[0] = tokenToSell;
-        path[1] = uniswapRouter.WETH();
-        path[2] = tokenToBuy;
+        address[] memory path;
+        uint256 deadline = block.timestamp + (15 * 60);
+        address WETH = uniswapRouter.WETH();
 
-        uniswapRouter.swapExactTokensForTokens(amountToSell, 1, path, address(this), block.timestamp + (15 * 60));
+        if (tokenToBuy == WETH) {
+            path = new address[](3);
+            path[0] = tokenToSell;
+            path[1] = uniswapRouter.WETH();
+
+            SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
+            uniswapRouter.swapExactTokensForETH(amountToSell, 1, path, address(this), deadline);
+        } else if (tokenToSell == WETH) {
+            /// @notice currently Cream fi does'nt provide crETH flashLoan
+            // path[0] = uniswapRouter.WETH();
+            // path[1] = tokenToBuy;
+            // uniswapRouter.swapExactETHForTokens(1, path, address(this), deadline);
+        } else {
+            path = new address[](3);
+            path[0] = tokenToSell;
+            path[1] = uniswapRouter.WETH();
+            path[2] = tokenToBuy;
+
+            SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
+            uniswapRouter.swapExactTokensForTokens(amountToSell, 1, path, address(this), deadline);
+        }
     }
 
     /// @param receiver : The Flash Loan contract address you deployed.
@@ -220,7 +241,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         uint256 balanceBefore = IERC20(uDebtToken).balanceOf(address(this));
 
-        SafeERC20.safeApprove(IERC20(uColToken), address(uniswapRouter), amtBorrowedToSell);
+        /// @notice swap  collateral underlying token to debt underlying token
         _swap(uColToken, uDebtToken, amtBorrowedToSell);
 
         uint256 receivedDebtTokenAmt = IERC20(uDebtToken).balanceOf(address(this)) - balanceBefore;

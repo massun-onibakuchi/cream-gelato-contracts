@@ -14,6 +14,19 @@ abstract contract CreamAccountDataProvider {
         comptroller = _comptroller;
     }
 
+    function getUserAccountData(address account)
+        public
+        view
+        returns (
+            uint256 totalCollateralInEth,
+            uint256 totalBorrowInEth,
+            uint256 healthFactor,
+            uint256 ethPerUsd
+        )
+    {
+        return _getUserAccountData(account);
+    }
+
     /// @notice ref Compound and Aave Doc for more detail
     /// @dev get specified user's position
     /// @param account cream account
