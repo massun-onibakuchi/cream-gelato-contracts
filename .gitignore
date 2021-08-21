@@ -19,3 +19,6 @@ coverage
 coverage.json
 
 # Solidity Visual Developer
+
+# 
+/ext
