@@ -12,6 +12,9 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
 
     mapping(address => bool) public whiteListedTokens;
 
+    event ProtectionSubmitted(address indexed account, bytes32 indexed protectionId);
+    event ProtectionCanceled(address indexed account, bytes32 indexed protectionId);
+
     constructor(
         address payable _pokeMe,
         address _cusdcAddress,
@@ -22,6 +25,7 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
     ) CreamLoanSaver(_pokeMe, _cusdcAddress, _gelato, _comptroller, _uniswapRouter, _oracle) {}
 
     /// @notice submit loan protection to PokeMe
+    /// crETH is not supported
     /// To work protection, caller needs to approve this contract using Collateral crToken beforehand
     function submitProtection(
         uint256 thresholdHealthFactor,
@@ -36,7 +40,7 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
             abi.encodePacked(thresholdHealthFactor, wantedHealthFactor, colToken, debtToken, _resolverData)
         );
 
-        require(_createdProtections[msg.sender].contains(protectionId) == false, "already started task");
+        require(_createdProtections[msg.sender].contains(protectionId) == false, "already-started-protection");
         require(wantedHealthFactor >= thresholdHealthFactor, "health-factor-under-threshold");
         require(colToken != debtToken, "collateral-debt-same");
         require(whiteListedTokens[address(colToken)], "collateral-token-not-allowed");
@@ -57,6 +61,15 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
             _resolverData,
             _useTaskTreasuryFunds
         );
+
+        emit ProtectionSubmitted(msg.sender, protectionId);
+    }
+
+    function cancelProtection(bytes32 protectionId) public {
+        require(_createdProtections[msg.sender].contains(protectionId) == false, "protection-not-found");
+        _createdProtections[msg.sender].remove(protectionId);
+        delete _protectionData[protectionId];
+        emit ProtectionCanceled(msg.sender, protectionId);
     }
 
     function addTokenToWhiteList(CToken cToken) public onlyOwner {

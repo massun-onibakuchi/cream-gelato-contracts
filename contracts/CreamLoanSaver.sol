@@ -107,7 +107,6 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         );
 
         require(borrowColAmt > 0, "amount-to-flash-borrow-zero");
-        _requireAcceptableSlipage();
 
         bytes memory swapData = abi.encode(
             protectionData_.colToken.underlying(),
@@ -127,7 +126,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         // Check user's position is safe
         (, , healthFactor, ) = _getUserAccountData(account);
-        if (healthFactor <= protectionData_.thresholdHealthFactor) revert("health-factor-stay-unsafe");
+        require(healthFactor <= protectionData_.thresholdHealthFactor, "health-factor-stay-unsafe");
     }
 
     /// @notice calculate amount of collateral to flashborrow
@@ -173,22 +172,23 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         uint256 deadline = block.timestamp + (15 * 60);
         address WETH = uniswapRouter.WETH();
 
+        // @todo slipage validation
         if (tokenToBuy == WETH) {
             path = new address[](3);
             path[0] = tokenToSell;
-            path[1] = uniswapRouter.WETH();
+            path[1] = WETH;
 
             SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
             uniswapRouter.swapExactTokensForETH(amountToSell, 1, path, address(this), deadline);
         } else if (tokenToSell == WETH) {
             /// @notice currently Cream fi does'nt provide crETH flashLoan
-            // path[0] = uniswapRouter.WETH();
+            // path[0] = WETH;
             // path[1] = tokenToBuy;
             // uniswapRouter.swapExactETHForTokens(1, path, address(this), deadline);
         } else {
             path = new address[](3);
             path[0] = tokenToSell;
-            path[1] = uniswapRouter.WETH();
+            path[1] = WETH;
             path[2] = tokenToBuy;
 
             SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
