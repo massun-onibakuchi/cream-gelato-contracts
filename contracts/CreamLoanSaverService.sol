@@ -7,18 +7,27 @@ import "./gelato/PokeMe.sol";
 import "./CreamLoanSaver.sol";
 
 contract CreamLoanSaverService is CreamLoanSaver {
-    constructor(address _pokeMe) CreamLoanSaver(_pokeMe) {}
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    constructor(
+        address payable _pokeMe,
+        address _cusdcAddress,
+        address _gelato,
+        IComptroller _comptroller,
+        IUniswapV2Router02 _uniswapRouter,
+        IPriceOracle _oracle
+    ) CreamLoanSaver(_pokeMe, _cusdcAddress, _gelato, _comptroller, _uniswapRouter, _oracle) {}
 
     function submitProtection(
         uint256 thresholdHealthFactor,
         uint256 wantedHealthFactor,
-        cToken colToken,
-        address debtToken,
+        CToken colToken,
+        CToken debtToken,
         address _resolverAddress,
         bytes calldata _resolverData,
         bool _useTaskTreasuryFunds
     ) public {
-        bytes23 protectionId = keccak256(
+        bytes32 protectionId = keccak256(
             abi.encodePacked(thresholdHealthFactor, wantedHealthFactor, colToken, debtToken, _resolverData)
         );
 

@@ -54,7 +54,7 @@ abstract contract CreamAccountDataProvider {
 
     function _calculateHealthFactor(uint256 totalCollateral, uint256 totalBorrow)
         internal
-        view
+        pure
         returns (uint256 healthFactor)
     {
         healthFactor = (totalCollateral * EXP_SCALE) / totalBorrow;
@@ -65,5 +65,5 @@ abstract contract CreamAccountDataProvider {
         return threshold >= currentHealthFactor;
     }
 
-    function isUnderThresholdHealthFactor(address account, uint256 threshold) internal view virtual returns (bool);
+    // function isUnderThresholdHealthFactor(address account) external view virtual returns (bool);
 }

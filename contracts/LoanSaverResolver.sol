@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.0;
 
-import "./interfaces/IResolver.sol";
 import "./interfaces/ILoanSaver.sol";
 
 contract LoanSaverResolver {
-    ILoanSaver public loanSaver;
+    ILoanSaver public immutable loanSaver;
 
-    constructor(ILoanSaver _loanSaver) public {
+    constructor(ILoanSaver _loanSaver) {
         loanSaver = _loanSaver;
     }
 
@@ -19,7 +18,7 @@ contract LoanSaverResolver {
         bool underThreshold = loanSaver.isUnderThresholdHealthFactor(user);
         if (underThreshold) {
             canExec = true;
-            bytes32 protectionId = loanSaver.getUserProtectionAt(account, optionalIndex);
+            bytes32 protectionId = loanSaver.getUserProtectionAt(user, optionalIndex);
             execPayload = abi.encodeWithSelector(ILoanSaver.saveLoan.selector, user, protectionId);
         }
     }
