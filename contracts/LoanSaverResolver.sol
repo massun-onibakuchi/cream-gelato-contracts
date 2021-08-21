@@ -10,6 +10,10 @@ contract LoanSaverResolver {
         loanSaver = _loanSaver;
     }
 
+    /// @notice ref `Gelato PokeMe` for more detail
+    /// @dev called off-chain
+    /// @param user registered user
+    /// @param optionalIndex protectionId, optional integer 
     function checker(address user, uint256 optionalIndex)
         external
         view

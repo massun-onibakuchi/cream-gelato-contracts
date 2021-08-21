@@ -11,6 +11,9 @@ artifacts
 cache
 typechain
 
+# hardhat-dependency-compiler
+hardhat-dependency-compiler/
+
 # macOS
 .DS_Store
 

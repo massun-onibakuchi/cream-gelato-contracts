@@ -4,6 +4,8 @@ pragma solidity 0.8.0;
 import "./interfaces/IComptroller.sol";
 import { CTokenInterface as CToken } from "./interfaces/CTokenInterface.sol";
 
+/// @notice Cream Comptroller wrapper
+/// @dev contract to get user position
 abstract contract CreamAccountDataProvider {
     uint256 public constant EXP_SCALE = 1e18;
     IComptroller public immutable comptroller;
@@ -12,6 +14,9 @@ abstract contract CreamAccountDataProvider {
         comptroller = _comptroller;
     }
 
+    /// @notice ref Compound and Aave Doc for more detail
+    /// @dev get specified user's position
+    /// @param account cream account
     function _getUserAccountData(address account)
         internal
         view
@@ -44,14 +49,6 @@ abstract contract CreamAccountDataProvider {
         healthFactor = _calculateHealthFactor(totalCollateralInEth, totalBorrowInEth);
     }
 
-    // the usdc price in wei
-    // e.g Eth $3000, this method returns `1e18 * 1 / 3000`
-    function _getUnderlyingPrice(CToken cToken) internal view virtual returns (uint256 price);
-
-    // the usdc price in wei
-    // e.g Eth $3000, this method returns `1e18 * 1 / 3000`
-    function _getUsdcEthPrice() internal view virtual returns (uint256 price);
-
     function _calculateHealthFactor(uint256 totalCollateral, uint256 totalBorrow)
         internal
         pure
@@ -64,6 +61,14 @@ abstract contract CreamAccountDataProvider {
         (, , uint256 currentHealthFactor, ) = _getUserAccountData(account);
         return threshold >= currentHealthFactor;
     }
+
+    // -------------- abstract function --------------
+
+    /// @return price weiPerAsset
+    function _getUnderlyingPrice(CToken cToken) internal view virtual returns (uint256 price);
+
+    /// @return price weiPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
+    function _getUsdcEthPrice() internal view virtual returns (uint256 price);
 
     // function isUnderThresholdHealthFactor(address account) external view virtual returns (bool);
 }

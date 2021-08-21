@@ -18,6 +18,8 @@ contract CreamLoanSaverService is CreamLoanSaver {
         IPriceOracle _oracle
     ) CreamLoanSaver(_pokeMe, _cusdcAddress, _gelato, _comptroller, _uniswapRouter, _oracle) {}
 
+    /// @notice submit loan protection to PokeMe
+    /// To work protection, caller needs to approve this contract using Collateral crToken beforehand
     function submitProtection(
         uint256 thresholdHealthFactor,
         uint256 wantedHealthFactor,

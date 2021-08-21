@@ -68,6 +68,11 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         oracle = _oracle;
     }
 
+    /// @notice If the health factor is less than the registered protection health factor,
+    /// repay the loan and increase the health factor to the target health factor.
+    /// only pokeMe can call this function
+    /// @param account cream fi user to be protected
+    /// @param protectionId registered protection id
     function saveLoan(address account, bytes32 protectionId) external override onlyPokeMe {
         // check
         require(_createdProtections[account].contains(protectionId), "protection-not-found");
@@ -83,7 +88,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         if (healthFactor > protectionData_.thresholdHealthFactor) revert("health-factor-is-not-under-threshold");
 
         // Calculate repay amount and debtToken amount to flash borrow
-        uint256 borrowColAmt = _calculateBorrowColAmt(
+        uint256 borrowColAmt = _calculateColAmtToBorrow(
             ProtectionDataCompute({
                 colToken: protectionData_.colToken,
                 debtToken: protectionData_.debtToken,
@@ -117,7 +122,10 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         if (healthFactor <= protectionData_.thresholdHealthFactor) revert("health-factor-stay-unsafe");
     }
 
-    function _calculateBorrowColAmt(ProtectionDataCompute memory _protectionDataCompute)
+    /// @notice calculate amount of collateral to flashborrow
+    /// @param _protectionDataCompute user position data, collateral price,collateral factor
+    /// @return borrowColAmt amount of collateral to flashborrow in order to recover health factor
+    function _calculateColAmtToBorrow(ProtectionDataCompute memory _protectionDataCompute)
         internal
         pure
         returns (uint256 borrowColAmt)
@@ -161,7 +169,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     }
 
     /// @notice flashLoan callback function
-    /// @dev only crToken call call this function
+    /// @dev only crToken can call this function
     /// @param sender msg.sender of flashLoan()
     /// @param underlying underlying token address of cToken
     /// @param amount flashborrow amount in underlying token
@@ -172,7 +180,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         address underlying,
         uint256 amount,
         uint256 premiums,
-        bytes memory params
+        bytes calldata params
     ) external override {
         (address flashLender, FlashLoanData memory flashLoanData) = abi.decode(params, (address, FlashLoanData));
         require(msg.sender == flashLender, "flashloan-callback-only-cToken");
@@ -232,12 +240,14 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         colToken.redeemUnderlying(amountToWithdraw);
     }
 
+    /// @notice cream's price oracle proxy wrapper
+    /// @return price weiPerAsset
     function _getUnderlyingPrice(CToken cToken) internal view override returns (uint256 price) {
         price = oracle.getUnderlyingPrice(cToken);
     }
 
-    // the usdc price in wei
-    // e.g Eth $3000, this method returns `1e18 * 1 / 3000`
+    /// @notice cream's price oracle proxy wrapper
+    /// @return price weiPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
     function _getUsdcEthPrice() internal view override returns (uint256 price) {
         price = oracle.getUnderlyingPrice(CToken(CUSDC_ADDRESS)) / 1e12;
     }
@@ -246,6 +256,9 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         return _createdProtections[account].at(index);
     }
 
+    /// @dev this function expected to be called by Gelato resolver in `checker()`
+    /// @param account borrower
+    /// @return bool : true if account health factor is smaller than the threshold
     function isUnderThresholdHealthFactor(address account) external view override returns (bool) {
         bytes32 id;
         uint256 length = _createdProtections[account].length();
