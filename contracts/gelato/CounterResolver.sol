@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.0;
 
-import { IResolver } from "./interfaces/IResolver.sol";
+import { IResolver } from "./IResolver.sol";
 
 interface ICounter {
     function lastExecuted() external view returns (uint256);

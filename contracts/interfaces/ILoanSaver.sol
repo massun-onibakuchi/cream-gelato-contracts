@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity 0.8.0;
 
 interface ILoanSaver {
-    function saveLoan(
-        address account,
-        address cToken,
-        address debtToken
-    ) external;
+    function saveLoan(address account, bytes32 protectionId) external;
 
-    function pokeMe() external view returns (address _pokeMe);
+    function isUnderThresholdHealthFactor(address account) external view returns (bool);
 
-    function isUnderThresholdHealthFactor(uint256 account) external view returns (bool);
+    function getUserProtectionAt(address account, uint256 index) external view returns (bytes32 protectionId);
 }

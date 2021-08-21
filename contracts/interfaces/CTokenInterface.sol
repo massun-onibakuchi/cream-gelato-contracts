@@ -2,8 +2,9 @@
 pragma solidity 0.8.0;
 
 import "./ICTokenFlashLoan.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface CTokenInterface is ICTokenFlashLoan {
+interface CTokenInterface is ICTokenFlashLoan, IERC20 {
     function getAccountSnapshot(address account)
         external
         view
