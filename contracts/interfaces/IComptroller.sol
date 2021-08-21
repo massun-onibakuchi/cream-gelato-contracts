@@ -24,4 +24,17 @@ interface IComptroller {
             uint256 liquidity,
             uint256 shortfall
         );
+
+    /// @param cTokenAddress The address of the cToken to check if listed and get the collateral factor for.
+    /// @return `isListed` represents whether the comptroller recognizes this cToken;
+    /// @return `collateralFactorMantissa`, scaled by 1e18, is multiplied by a supply balance to determine how much value can be borrowed.
+    /// @return `isComped` boolean indicates whether or not suppliers and borrowers are distributed COMP tokens.
+    function markets(address cTokenAddress)
+        external
+        view
+        returns (
+            bool,
+            uint256,
+            bool
+        );
 }

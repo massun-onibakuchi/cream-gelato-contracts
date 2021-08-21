@@ -10,11 +10,3 @@ interface IFlashloanReceiver {
         bytes calldata params
     ) external;
 }
-
-interface ICTokenFlashloan {
-    function flashLoan(
-        address receiver,
-        uint256 amount,
-        bytes calldata params
-    ) external;
-}
