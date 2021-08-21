@@ -16,10 +16,6 @@ contract LoanSaverResolver {
         view
         returns (bool canExec, bytes memory execPayload)
     {
-        // Get user account data
-        // Health factor check
-        // Get minimum health factor
-        // if the health factor < minimum health factor, excutable
         bool underThreshold = loanSaver.isUnderThresholdHealthFactor(user);
         if (underThreshold) {
             canExec = true;

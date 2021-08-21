@@ -19,19 +19,22 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     struct ProtectionData {
         uint256 thresholdHealthFactor;
         uint256 wantedHealthFactor;
-        cToken colToken;
-        IERC20 debtToken;
+        CToken colToken;
+        CToken debtToken;
     }
 
     struct FlashLoanData {
         ProtectionData protectionData;
+        address borrower;
         bytes swapData;
     }
 
-    uint256 public constant FLASH_FEE_BIPS = 3;
     address public constant CUSDC_ADDRESS = 0x0;
+    uint256 constant TEN_THOUSAND_BPS = 1e4;
+    uint256 public constant FLASH_FEE_BIPS = 3;
 
-    // ISwapModule public immutable swapModule;
+    uint256 public protectionFeeBps = 3;
+
     IUniswapV2Router public immutable uniswapRouter;
     IPriceOracle public immutable oracle;
 
@@ -45,7 +48,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     function saveLoan(address account, bytes32 protectionId) external onlyPokeMe {
         // check
-        require(_createdProtections[msg.sender].contains(protectionId), "protection-not-found");
+        require(_createdProtections[account].contains(protectionId), "protection-not-found");
 
         // effect
         ProtectionData memory protectionData_ = _protectionData[protectionId];
@@ -53,16 +56,17 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         delete _protectionData[protectionId];
 
         (uint256 totalCollateralInEth, uint256 totalBorrowInEth, uint256 healthFactor, ) = _getUserAccountData(account);
+        (, uint256 collateralFactorMantissa, ) = comptroller.markets(address(protectionData_.colToken));
         // check if healthFactor is under threshold
         if (healthFactor > protectionData_.thresholdHealthFactor) revert("health-factor-is-not-under-threshold");
 
         // Calculate repay amount and debtToken amount to flash borrow
-        uint256 flashFee = 0;
+        uint256 flashFees = 0;
         uint256 borrowColAmt = _calculateBorrowColAmt(
             protectionData_.colToken,
             wantedHealthFactor,
             healthFactor,
-            flashFee,
+            flashFees,
             totalBorrowInEth
         );
         bytes swapData = abi.encode(
@@ -77,23 +81,38 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
             borrowColAmt,
             abi.encode(
                 address(protectionData_.colToken),
-                FlashLoanData({ protectionData: protectionData_, swapData: swapData })
+                FlashLoanData({ protectionData: protectionData_, borrower: account, swapData: swapData })
             )
         );
 
         // Check user's position is safe
     }
 
-    function _calculateBorrowColAmt(
-        cToken cToken,
-        uint256 targetHf,
-        uint256 currentHf,
-        uint256 flashFee,
-        uint256 debtAmount
-    ) internal view returns (uint256 borrowColAmt) {
-        borrowColAmtInEth = ((wantedHealthFactor - currentHf) * debtAmount) / (wantedHealthFactor - flashFee);
-        uint256 weiPerAsset = oracle.getUnderlyingPrice(cToken);
-        borrowColAmt = (borrowColAmtInEth * EXP_SCALE) / weiPerAsset;
+    struct ProtectionDataCompute {
+        CToken colToken;
+        CToken debtToken;
+        uint256 weiPerColToken;
+        uint256 wantedHealthFactor;
+        uint256 colFactor;
+        uint256 totalCollateralInEth;
+        uint256 totalBorrowInEth;
+        uint256 protectionFeeBps;
+        uint256 flashLoanFee;
+    }
+
+    function _calculateBorrowColAmt(ProtectionDataCompute memory _protectionDataCompute)
+        internal
+        view
+        returns (uint256 borrowColAmt)
+    {
+        uint256 borrowColAmtInEth = ((_protectionDataCompute.wantedHealthFactor *
+            _protectionDataCompute.totalBorrowInEth) -
+            (_protectionDataCompute.totalCollateralInEth * _protectionDataCompute.colFactor)) /
+            (_protectionDataCompute.wantedHealthFactor -
+                _protectionDataCompute.colFactor *
+                (TEN_THOUSAND_BPS + _protectionDataCompute.flashLoanFeeBps + _protectionDataCompute.protectionFeeBps) *
+                1e14);
+        borrowColAmt = (borrowColAmtInEth * EXP_SCALE) / weiPerColToken;
     }
 
     function _swap(
@@ -107,20 +126,6 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         path[2] = tokenToBuy;
 
         uniswapRouter.swapExactTokensForTokens(amountToSell, 1, path, address(this), block.timestamp + (15 * 60));
-    }
-
-    function _getUnderlyingPrice(CToken cToken) internal view override returns (uint256 price) {
-        price = oracle.getUnderlyingPrice(cToken);
-    }
-
-    // the usdc price in wei
-    // e.g Eth $3000, this method returns `1e18 * 1 / 3000`
-    function _getUsdcEthPrice() internal view override returns (uint256 price) {
-        price = oracle.getUnderlyingPrice(CUSDC_ADDRESS) / 1e12;
-    }
-
-    function getUserProtectionAt(address account, uint256 index) external view returns (bytes32 protectionId) {
-        return _createdProtections[account].at(index);
     }
 
     /// @param receiver : The Flash Loan contract address you deployed.
@@ -137,46 +142,13 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         flashLender.flashLoan(receiver, amount, params);
     }
 
-    // -- excuteOperation
-    // swap col for debtToken
-    // repay debt
-    // withdraw col
-    // flashPayBack col
-    function _excuteOperation(FlashLoanData memory flashLoanData) internal {
-        (ProtectionData memory protectionData, bytes swapData) = abi.decode((ProtectionData, bytes), flashLoanData);
-        // tokenToSell = collateral uToken, tokenToBuy = debt uToken
-        (address tokenToSell, address tokenToBuy, uint256 amountToSell) = abi.decode(
-            (address, address, uint256),
-            swapData
-        );
-
-        // flashLoan logic
-        SafeERC20.safeApprove(tokenToSell, address(uniswapRouter), amountToSell);
-        _swap(tokenToSell, tokenToBuy, amountToSell);
-        uint256 debtBalance = IERC20(cToken.underlying()).balanceOf(address(this));
-
-        _paybackToCToken(protectionData.debtToken, debtBalance);
-
-        _withdrawCollateral(protectionData.colToken, amountToWithdraw, address(this));
-
-        // transfer fund + fee back to cToken
-        require(IERC20(underlying).transfer(cToken, amount + fee), "Transfer fund back failed");
-    }
-
-    function _paybackToCToken(
-        cToken debtToken,
-        address asset,
-        uint256 debtToRepay
-    ) internal {
-        // Approves 0 first to comply with tokens that implement the anti frontrunning approval fix
-        SafeERC20.safeApprove(asset, address(debtToken), 0);
-        SafeERC20.safeApprove(asset, address(debtToken), debtToRepay);
-        debtToken.repay(asset, debtToRepay, _onBehalf);
-    }
-
-    function _withdrawCollateral(cToken colToken, uint256 amountToWithdraw) internal {}
-
-    // flashLoan callback function
+    /// @notice flashLoan callback function
+    /// @dev only crToken call call this function
+    /// @param sender msg.sender of flashLoan()
+    /// @param underlying underlying token address of cToken
+    /// @param amount flashborrow amount in underlying token
+    /// @param fee fee in underlying token
+    /// @param params encoded parameter
     function excuteOperation(
         address sender,
         address underlying,
@@ -186,11 +158,79 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     ) external {
         (address flashLender, FlashLoanData memory flashLoanData) = abi.decode((address, FlashLoanData), params);
         require(msg.sender == flashLender, "flashloan-callback-only-cToken");
-        _excuteOperation(sender, underlying, amount, flashLoanData);
+        _excuteOperation(amount, fee, flashLoanData);
     }
 
-    function _transferFees(address _asset, uint256 _amount) {
-        SafeERC20.safeTransfer(IERC20(_asset), GELATO, _amount);
+    function _excuteOperation(
+        uint256 amount,
+        uint256 fee,
+        FlashLoanData memory flashLoanData
+    ) internal {
+        (ProtectionData memory protectionData, address onBehalf, bytes swapData) = abi.decode(
+            (ProtectionData, address, bytes),
+            flashLoanData
+        );
+        // uTokenToSell = collateral uToken, tokenToBuy = debt uToken
+        (address uColToken, address uDebtToken, uint256 amtBorrowedToSell) = abi.decode(
+            (address, address, uint256),
+            swapData
+        );
+
+        uint256 balanceBefore = IERC20(uDebtToken).balanceOf(address(this));
+
+        SafeERC20.safeApprove(uColToken, address(uniswapRouter), amtBorrowedToSell);
+        _swap(uColToken, uDebtToken, amtBorrowedToSell);
+
+        uint256 receivedDebtTokenAmt = IERC20(uDebtToken).balanceOf(address(this)) - balanceBefore;
+        uint256 amountToWithdraw = amtBorrowedToSell + fees + premiums;
+
+        /// @notice payback debt to cToken
+        _paybackToCToken(protectionData.debtToken, uDebtToken, onBehalf, receivedDebtTokenAmt);
+
+        /// @notice Withdraw collateral (including fees) and flashloan premium.
+        _withdrawCollateral(protectionData.colToken, onBehalf, address(this), amountToWithdraw);
+
+        /// @notice transfer fees to Gelato
+        SafeERC20.safeTransfer(IERC20(uColToken), GELATO, fees);
+
+        /// @notice transfer flashborrow + premiums to cToken
+        SafeERC20.safeTransfer(IERC20(uColToken), protectionData.colToken, amtBorrowedToSell + premiums);
+    }
+
+    function _paybackToCToken(
+        cToken debtToken,
+        address uDebtToken,
+        address borrower,
+        uint256 debtToRepay
+    ) internal {
+        // Approves 0 first to comply with tokens that implement the anti frontrunning approval fix
+        SafeERC20.safeApprove(uDebtToken, address(debtToken), 0);
+        SafeERC20.safeApprove(uDebtToken, address(debtToken), debtToRepay);
+        debtToken.repayBorrowBehalf(borrower, debtToRepay);
+    }
+
+    function _withdrawCollateral(
+        cToken colToken,
+        address onBehalf,
+        address to,
+        uint256 amountToWithdraw
+    ) internal {
+        SafeERC20.safeTransferFrom(colToken, onBehalf, to, amountToWithdraw);
+        colToken.redeemUndering(amountToWithdraw);
+    }
+
+    function _getUnderlyingPrice(CToken cToken) internal view override returns (uint256 price) {
+        price = oracle.getUnderlyingPrice(cToken);
+    }
+
+    // the usdc price in wei
+    // e.g Eth $3000, this method returns `1e18 * 1 / 3000`
+    function _getUsdcEthPrice() internal view override returns (uint256 price) {
+        price = oracle.getUnderlyingPrice(CUSDC_ADDRESS) / 1e12;
+    }
+
+    function getUserProtectionAt(address account, uint256 index) external view returns (bytes32 protectionId) {
+        return _createdProtections[account].at(index);
     }
 
     // gas intensive
