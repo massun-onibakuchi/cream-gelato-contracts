@@ -34,6 +34,7 @@ contract CreamLoanSaverService is CreamLoanSaver {
         );
 
         require(_createdProtections[msg.sender].contains(protectionId) == false, "already started task");
+        require(wantedHealthFactor >= thresholdHealthFactor, "health-factor-under-threshold");
 
         _createdProtections[msg.sender].add(protectionId);
         _protectionData[protectionId] = ProtectionData({

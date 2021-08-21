@@ -24,12 +24,12 @@ abstract contract CreamAccountDataProvider {
             uint256 totalCollateralInEth,
             uint256 totalBorrowInEth,
             uint256 healthFactor,
-            uint256 weiPerUsdc
+            uint256 ethPerUsd
         )
     {
         (, uint256 totalCollateral, ) = comptroller.getAccountLiquidity(account);
         address[] memory assets = comptroller.getAssetsIn(account);
-        weiPerUsdc = _getUsdcEthPrice();
+        ethPerUsd = _getUsdcEthPrice();
 
         {
             CToken cToken;
@@ -39,13 +39,13 @@ abstract contract CreamAccountDataProvider {
                 cToken = CToken(assets[i]);
                 borrowAmt = cToken.borrowBalanceStored(account);
                 if (borrowAmt > 0) {
-                    uint256 weiPerAsset = _getUnderlyingPrice(cToken);
-                    totalBorrowInEth += (borrowAmt * weiPerAsset) / EXP_SCALE; // usdAmount * weiPerUsdc
+                    uint256 ethPerAsset = _getUnderlyingPrice(cToken);
+                    totalBorrowInEth += (borrowAmt * ethPerAsset) / EXP_SCALE; // usdAmount * ethPerUsd
                 }
             }
         }
 
-        totalCollateralInEth = (totalCollateral * weiPerUsdc) / EXP_SCALE; // usd * weiPerUsdc
+        totalCollateralInEth = (totalCollateral * ethPerUsd) / EXP_SCALE; // usd * ethPerUsd
         healthFactor = _calculateHealthFactor(totalCollateralInEth, totalBorrowInEth);
     }
 
@@ -64,7 +64,7 @@ abstract contract CreamAccountDataProvider {
 
     // -------------- abstract function --------------
 
-    /// @return price weiPerAsset
+    /// @return price ethPerAsset
     function _getUnderlyingPrice(CToken cToken) internal view virtual returns (uint256 price);
 
     /// @return price weiPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
