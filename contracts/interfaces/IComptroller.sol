@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.0;
 
+import { CTokenInterface as CToken } from "./CTokenInterface.sol";
+
 interface IComptroller {
     /// @param account: The account whose list of entered markets shall be queried.
-    /// @return address[] : The address of each market which is currently entered into.
-    function getAssetsIn(address account) external view returns (address[] memory);
+    /// @return cToken[] : The address of each market which is currently entered into.
+    function getAssetsIn(address account) external view returns (CToken[] memory);
 
     /// @dev Account Liquidity represents the USD value borrowable by a user,
     ///      before it reaches liquidation. Users with a shortfall (negative liquidity

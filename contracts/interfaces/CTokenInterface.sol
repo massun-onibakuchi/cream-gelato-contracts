@@ -5,6 +5,12 @@ import "./ICTokenFlashLoan.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface CTokenInterface is ICTokenFlashLoan, IERC20 {
+    /**
+     * @notice Get a snapshot of the account's balances, and the cached exchange rate
+     * @dev This is used by comptroller to more efficiently perform liquidity checks.
+     * @param account Address of the account to snapshot
+     * @return (possible error, token balance, borrow balance, exchange rate mantissa)
+     */
     function getAccountSnapshot(address account)
         external
         view
@@ -15,7 +21,9 @@ interface CTokenInterface is ICTokenFlashLoan, IERC20 {
             uint256
         );
 
-    function underlying() external returns (address);
+    function underlying() external view returns (address);
+
+    function balanceOfUnderlying(address account) external view returns (uint256);
 
     // function mint(uint256 mintAmount) external returns (uint256);
 

@@ -54,8 +54,6 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     mapping(address => EnumerableSet.Bytes32Set) internal _createdProtections;
     mapping(bytes32 => ProtectionData) internal _protectionData;
 
-    receive() external payable {}
-
     constructor(
         address payable _pokeMe,
         address _cusdcAddress,

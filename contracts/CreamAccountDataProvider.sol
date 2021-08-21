@@ -41,18 +41,16 @@ abstract contract CreamAccountDataProvider {
         )
     {
         (, uint256 totalCollateral, ) = comptroller.getAccountLiquidity(account);
-        address[] memory assets = comptroller.getAssetsIn(account);
+        CToken[] memory assets = comptroller.getAssetsIn(account);
         ethPerUsd = _getUsdcEthPrice();
 
         {
-            CToken cToken;
             uint256 borrowAmt;
             uint256 length = assets.length;
             for (uint256 i = 0; i < length; i++) {
-                cToken = CToken(assets[i]);
-                borrowAmt = cToken.borrowBalanceStored(account);
+                borrowAmt = assets[i].borrowBalanceStored(account);
                 if (borrowAmt > 0) {
-                    uint256 ethPerAsset = _getUnderlyingPrice(cToken);
+                    uint256 ethPerAsset = _getUnderlyingPrice(assets[i]);
                     totalBorrowInEth += (borrowAmt * ethPerAsset) / EXP_SCALE; // usdAmount * ethPerUsd
                 }
             }
