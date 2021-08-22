@@ -42,7 +42,7 @@ contract ComptrollerMock is IComptroller {
         return assetsIn;
     }
 
-    function _setAssetsIn(address account, CToken[] memory assets) public {
+    function setAssetsIn(address account, CToken[] memory assets) public {
         uint256 length = assets.length;
         for (uint256 i = 0; i < length; i++) {
             accountAssets[account][i] = assets[i];

@@ -77,6 +77,7 @@ contract CTokenMock is ERC20, CTokenInterface {
         BorrowSnapshot memory snapshot = accountBorrows[msg.sender];
         accountBorrows[msg.sender].principal = snapshot.principal + borrowAmount;
         require(IERC20(uToken).transfer(msg.sender, borrowAmount), "Error during transfer");
+        return 0;
     }
 
     function repayBorrow(uint256 repayAmount) public returns (uint256) {
