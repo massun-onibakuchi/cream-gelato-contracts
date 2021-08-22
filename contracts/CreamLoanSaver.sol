@@ -13,6 +13,8 @@ import "./interfaces/IFlashloanReceiver.sol";
 import "./interfaces/IPriceOracle.sol";
 import { CTokenInterface as CToken, ICTokenFlashLoan } from "./interfaces/CTokenInterface.sol";
 
+import "hardhat/console.sol";
+
 contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IFlashloanReceiver {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -118,10 +120,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
             protectionData_.colToken,
             address(this),
             borrowColAmt,
-            abi.encode(
-                address(protectionData_.colToken),
-                FlashLoanData({ protectionData: protectionData_, borrower: account, swapData: swapData })
-            )
+            FlashLoanData({ protectionData: protectionData_, borrower: account, swapData: swapData })
         );
 
         // Check user's position is safe
@@ -134,29 +133,28 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     /// @return borrowColAmt amount of collateral to flashborrow in order to recover health factor
     function _calculateColAmtToBorrow(ProtectionDataCompute memory _protectionDataCompute)
         internal
-        pure
+        view
         returns (uint256 borrowColAmt)
     {
         // @audit calculate amount of collateral to flashborrow
         // @note
         // current hf means HF_c,which equals to y/x, wanted hf means HF_w = (y - ∆y*f) / (x-∆y)
         // we want to get `amount` in collateral token, ∆y means value (in Eth) to redeem,
-        // ∆y = (HF_w * x - y * colFactor) / (HF_w - colFactor * (flashFee + protectionFee))
+        // ∆y = (HF_w * x - y) / (HF_w - (flashFee + protectionFee))
         // ∆y = amount * ethPerAsset * colFactor
         // amount = ∆y / ethPerAsset / colFactor
 
-        uint256 borrowColAmtInEth = ((_protectionDataCompute.wantedHealthFactor *
-            _protectionDataCompute.totalBorrowInEth) -
-            (_protectionDataCompute.totalCollateralInEth * _protectionDataCompute.colFactor)) /
+        uint256 borrowColAmtInEth = (_protectionDataCompute.wantedHealthFactor *
+            _protectionDataCompute.totalBorrowInEth -
+            _protectionDataCompute.totalCollateralInEth *
+            EXP_SCALE) /
             (_protectionDataCompute.wantedHealthFactor -
-                _protectionDataCompute.colFactor *
                 (TEN_THOUSAND_BPS + _protectionDataCompute.flashLoanFeeBps + _protectionDataCompute.protectionFeeBps) *
                 1e14);
         // @note require ethPerColToken and colFactor non-zero
         borrowColAmt =
-            (borrowColAmtInEth * EXP_SCALE) /
-            _protectionDataCompute.ethPerColToken /
-            _protectionDataCompute.colFactor;
+            (((borrowColAmtInEth * EXP_SCALE) / _protectionDataCompute.colFactor) * EXP_SCALE) /
+            _protectionDataCompute.ethPerColToken;
     }
 
     function _requireAcceptableSlipage() internal view {
@@ -198,28 +196,26 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     /// @param receiver : The Flash Loan contract address you deployed.
     /// @param amount : Keep in mind that the decimal of amount is dependent on crToken's underlying asset.
-    /// @param params : encoded parameter for executeOperation().
+    /// @param flashLoanData : encoded parameter for executeOperation().
     /// If no parameters are needed in your Flash Loan contract, use an empty value "".
     /// If you would like to pass parameters into your flash loan, you will need to encode it.
     function _flashLoan(
         ICTokenFlashLoan flashLender,
         address receiver,
         uint256 amount,
-        bytes memory params
+        FlashLoanData memory flashLoanData
     ) internal {
-        flashLender.flashLoan(receiver, amount, params);
+        flashLender.flashLoan(receiver, amount, abi.encode(address(flashLender), flashLoanData));
     }
 
     /// @notice flashLoan callback function
     /// @dev only crToken can call this function
-    /// @param sender msg.sender of flashLoan()
-    /// @param underlying underlying token address of cToken
     /// @param amount flashborrow amount in underlying token
     /// @param premiums fee in underlying token
     /// @param params encoded parameter
     function executeOperation(
-        address sender,
-        address underlying,
+        address, // sender
+        address, // underlying
         uint256 amount,
         uint256 premiums,
         bytes calldata params
