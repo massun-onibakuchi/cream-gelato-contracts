@@ -81,5 +81,5 @@ abstract contract CreamAccountDataProvider {
     /// @return price weiPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
     function _getUsdcEthPrice() internal view virtual returns (uint256 price);
 
-    // function isUnderThresholdHealthFactor(address account) external view virtual returns (bool);
+    function isUnderThresholdHealthFactor(address account) external view virtual returns (bool);
 }

@@ -143,12 +143,12 @@ contract CTokenMock is ERC20, CTokenInterface {
         require(uToken_.balanceOf(address(this)) >= fee + balanceBefore, "balance-inconsistent");
     }
 
-    function _setExchangeRateStored(uint256 _rate) public returns (uint256) {
+    function setExchangeRateStored(uint256 _rate) public returns (uint256) {
         _exchangeRate = _rate;
         return _exchangeRate;
     }
 
-    function _setComptroller(address _comp) public {
+    function setComptroller(address _comp) public {
         _comptroller = _comp;
     }
 

@@ -282,15 +282,15 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     /// @notice cream's price oracle proxy wrapper
     /// e.g underlying asset (uToken) price is $2 and ETH=$3000,
-    /// ETH per uToken = 2/3000 -> wei per uToken =1e18 * 2 / 3000
+    /// ETH per uToken = 2/3000
     /// if its decimals is x, it is represented as 10**18 * 10**(18-x) * 2/3000
-    /// @return price weiPerAsset
+    /// @return price ethPerAsset
     function _getUnderlyingPrice(CToken cToken) internal view override returns (uint256 price) {
         price = oracle.getUnderlyingPrice(cToken);
     }
 
     /// @notice cream's price oracle proxy wrapper
-    /// @return price weiPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
+    /// @return price ethPerUSDC USDC/ETH if ETH=$3000, return 1e18 * 1 / 3000
     function _getUsdcEthPrice() internal view override returns (uint256 price) {
         price = oracle.getUnderlyingPrice(CToken(CUSDC_ADDRESS)) / 1e12;
     }
@@ -302,7 +302,12 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     /// @dev this function expected to be called by Gelato resolver in `checker()`
     /// @param account borrower
     /// @return bool : true if account health factor is smaller than the threshold
-    function isUnderThresholdHealthFactor(address account) external view override returns (bool) {
+    function isUnderThresholdHealthFactor(address account)
+        external
+        view
+        override(CreamAccountDataProvider, ILoanSaver)
+        returns (bool)
+    {
         bytes32 id;
         uint256 length = _createdProtections[account].length();
         (, , uint256 currentHealthFactor, ) = _getUserAccountData(account);
