@@ -65,7 +65,7 @@ abstract contract CreamAccountDataProvider {
         pure
         returns (uint256 healthFactor)
     {
-        if (totalCollateral == 0) return 0;
+        if (totalBorrow == 0) return 0;
         healthFactor = (totalCollateral * EXP_SCALE) / totalBorrow;
     }
 

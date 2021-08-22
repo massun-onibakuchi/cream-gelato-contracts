@@ -15,7 +15,7 @@ contract CreamLoanSaverServiceTest is CreamLoanSaverService {
 
     function calculateColAmtToBorrow(ProtectionDataCompute memory _protectionDataCompute)
         public
-        pure
+        view
         returns (uint256)
     {
         return _calculateColAmtToBorrow(_protectionDataCompute);
