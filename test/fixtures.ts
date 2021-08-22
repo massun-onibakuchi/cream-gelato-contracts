@@ -5,6 +5,9 @@ import {
     CTokenMock,
     ComptrollerMock,
     PriceOracleMock,
+    PokeMe,
+    PokeMeReady,
+
     // UniswapV2Router02,
     // UniswapV2Factory,
     // UniswapV2Pair,
@@ -43,6 +46,23 @@ export const creamFixture: Fixture<{
     const oracle = (await Oracle.deploy()) as PriceOracleMock
     return { token0, token1, cToken0, cToken1, comptroller, oracle }
 }
+
+// export const gelatoFixture: Fixture<{
+//     token0: ERC20Mock
+//     token1: ERC20Mock
+//     cToken0: CTokenMock
+//     cToken1: CTokenMock
+//     comptroller: ComptrollerMock
+//     oracle: PriceOracleMock
+// }> = async () => {
+//     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock")
+//     const token0 = (await ERC20MockFactory.deploy("Token0", "TOKEN0")) as ERC20Mock
+//     const token1 = (await ERC20MockFactory.deploy("Token1", "TOKEN1")) as ERC20Mock
+
+//     const CTokenMockFactory = await ethers.getContractFactory("CTokenMock")
+
+//     return { token0, token1, cToken0, cToken1, comptroller, oracle }
+// }
 
 // factory = await Factory.deploy(ethers.constants.AddressZero);
 // const createPairTx = await factory.createPair(token0.address, token1.address);

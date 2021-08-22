@@ -40,23 +40,23 @@ abstract contract CreamAccountDataProvider {
             uint256 ethPerUsd
         )
     {
-        (, uint256 totalCollateral, ) = comptroller.getAccountLiquidity(account);
+        (, uint256 liquidity, ) = comptroller.getAccountLiquidity(account);
         CToken[] memory assets = comptroller.getAssetsIn(account);
         ethPerUsd = _getUsdcEthPrice();
 
         {
-            uint256 borrowAmt;
+            // calculate account total borrow amount
             uint256 length = assets.length;
             for (uint256 i = 0; i < length; i++) {
-                borrowAmt = assets[i].borrowBalanceStored(account);
-                if (borrowAmt > 0) {
+                uint256 borrowBalance = assets[i].borrowBalanceStored(account);
+                if (borrowBalance > 0) {
                     uint256 ethPerAsset = _getUnderlyingPrice(assets[i]);
-                    totalBorrowInEth += (borrowAmt * ethPerAsset) / EXP_SCALE; // usdAmount * ethPerUsd
+                    totalBorrowInEth += (borrowBalance * ethPerAsset) / EXP_SCALE; // usdAmount * ethPerUsd
                 }
             }
         }
 
-        totalCollateralInEth = (totalCollateral * ethPerUsd) / EXP_SCALE; // usd * ethPerUsd
+        totalCollateralInEth = totalBorrowInEth + (liquidity * ethPerUsd) / EXP_SCALE; // usd * ethPerUsd
         healthFactor = _calculateHealthFactor(totalCollateralInEth, totalBorrowInEth);
     }
 
@@ -65,6 +65,7 @@ abstract contract CreamAccountDataProvider {
         pure
         returns (uint256 healthFactor)
     {
+        if (totalCollateral == 0) return 0;
         healthFactor = (totalCollateral * EXP_SCALE) / totalBorrow;
     }
 

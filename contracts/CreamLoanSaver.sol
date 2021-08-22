@@ -84,17 +84,19 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         (uint256 totalCollateralInEth, uint256 totalBorrowInEth, uint256 healthFactor, ) = _getUserAccountData(account);
         (, uint256 collateralFactorMantissa, ) = comptroller.markets(address(protectionData_.colToken));
+        uint256 ethPerColToken = _getUnderlyingPrice(protectionData_.colToken);
 
         // check if healthFactor is under threshold
         require(collateralFactorMantissa > 0, "collateral-factor-zero");
         require(healthFactor > protectionData_.thresholdHealthFactor, "health-factor-not-under-threshold");
+        require(ethPerColToken > 0, "collateral-price-zero");
 
         // Calculate repay amount and debtToken amount to flash borrow
         uint256 borrowColAmt = _calculateColAmtToBorrow(
             ProtectionDataCompute({
                 colToken: protectionData_.colToken,
                 debtToken: protectionData_.debtToken,
-                ethPerColToken: _getUnderlyingPrice(protectionData_.colToken),
+                ethPerColToken: ethPerColToken,
                 wantedHealthFactor: protectionData_.wantedHealthFactor,
                 colFactor: collateralFactorMantissa,
                 totalCollateralInEth: totalCollateralInEth,
@@ -150,7 +152,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
                 _protectionDataCompute.colFactor *
                 (TEN_THOUSAND_BPS + _protectionDataCompute.flashLoanFeeBps + _protectionDataCompute.protectionFeeBps) *
                 1e14);
-
+        // @note require ethPerColToken and colFactor non-zero
         borrowColAmt =
             (borrowColAmtInEth * EXP_SCALE) /
             _protectionDataCompute.ethPerColToken /
@@ -319,7 +321,6 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
                 return true;
             }
         }
-
         return false;
     }
 }

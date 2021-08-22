@@ -29,7 +29,29 @@ contract CreamLoanSaverServiceTest is CreamLoanSaverService {
         _swap(tokenToSell, tokenToBuy, amountToSell);
     }
 
-    function getUnderlyingPrice(CToken cToken) public view returns (uint256 price) {
-        return _getUnderlyingPrice(cToken);
+    function paybackToCToken(
+        CToken debtToken,
+        IERC20 uDebtToken,
+        address borrower,
+        uint256 debtToRepay
+    ) public {
+        _paybackToCToken(debtToken, uDebtToken, borrower, debtToRepay);
     }
+
+    function withdrawCollateral(
+        CToken colToken,
+        address onBehalf,
+        address to,
+        uint256 amountToWithdraw
+    ) public {
+        _withdrawCollateral(colToken, onBehalf, to, amountToWithdraw);
+    }
+
+    // function getUnderlyingPrice(CToken cToken) public view returns (uint256 price) {
+    //     return _getUnderlyingPrice(cToken);
+    // }
+
+    // function getUsdcEthPrice() public view returns (uint256 price) {
+    //     return _getUsdcEthPrice();
+    // }
 }
