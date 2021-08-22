@@ -41,7 +41,7 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
         );
 
         require(_createdProtections[msg.sender].contains(protectionId) == false, "already-started-protection");
-        require(wantedHealthFactor >= thresholdHealthFactor, "health-factor-under-threshold");
+        require(wantedHealthFactor >= thresholdHealthFactor && thresholdHealthFactor > 1, "invalid-health-factor-input");
         require(colToken != debtToken, "collateral-debt-same");
         require(whiteListedTokens[address(colToken)], "collateral-token-not-allowed");
         require(whiteListedTokens[address(debtToken)], "debt-token-not-allowed");
