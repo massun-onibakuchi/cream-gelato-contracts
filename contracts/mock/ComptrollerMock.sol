@@ -23,12 +23,16 @@ contract ComptrollerMock is IComptroller {
      */
     mapping(address => CToken[]) public accountAssets;
 
-    constructor(address[] memory _assets, uint256[] memory _colFactors) {
+    /**
+     * @dev test purpose
+     */
+    mapping(address => uint256) public accountsLiquidity;
+
+    constructor(address[] memory _assets) {
         uint256 length = _assets.length;
-        require(length == _colFactors.length, "array-length");
         for (uint256 i = 0; i < length; i++) {
             markets[_assets[i]].isListed = true;
-            markets[_assets[i]].collateralFactorMantissa = _colFactors[i];
+            markets[_assets[i]].collateralFactorMantissa = 9 * 1e17;
         }
     }
 
@@ -44,8 +48,9 @@ contract ComptrollerMock is IComptroller {
 
     function setAssetsIn(address account, CToken[] memory assets) public {
         uint256 length = assets.length;
+        CToken[] storage assetsIn = accountAssets[account];
         for (uint256 i = 0; i < length; i++) {
-            accountAssets[account][i] = assets[i];
+            assetsIn.push(assets[i]);
         }
     }
 
@@ -69,17 +74,22 @@ contract ComptrollerMock is IComptroller {
             uint256 shortfall
         )
     {
-        uint256 totalCollateral;
-        uint256 totalDebt;
-        CToken asset;
-        CToken[] memory assetsIn = getAssetsIn(account);
-        uint256 length = assetsIn.length;
-        for (uint256 i = 0; i < length; i++) {
-            asset = assetsIn[i];
-            uint256 colFactor = markets[address(asset)].collateralFactorMantissa;
-            totalCollateral += asset.balanceOfUnderlying(account) * colFactor;
-            totalDebt += asset.borrowBalanceStored(account);
-        }
-        liquidity = totalCollateral - totalDebt;
+        // uint256 totalCollateral;
+        // uint256 totalDebt;
+        // CToken asset;
+        // CToken[] memory assetsIn = getAssetsIn(account);
+        // uint256 length = assetsIn.length;
+        // for (uint256 i = 0; i < length; i++) {
+        //     asset = assetsIn[i];
+        //     uint256 colFactor = markets[address(asset)].collateralFactorMantissa;
+        //     totalCollateral += asset.balanceOfUnderlying(account) * colFactor * price;
+        //     totalDebt += asset.borrowBalanceStored(account);
+        // }
+        // liquidity = totalCollateral - totalDebt;
+        return (0, accountsLiquidity[account], 0);
+    }
+
+    function setAccountLiquidity(address account, uint256 liquidity) public {
+        accountsLiquidity[account] = liquidity;
     }
 }

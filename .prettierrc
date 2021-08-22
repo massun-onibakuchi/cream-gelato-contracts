@@ -12,6 +12,12 @@
             "options": {
                 "tabWidth": 4
             }
+        },
+        {
+            "files": "*.{js,ts}",
+            "options": {
+                "semi": false
+            }
         }
     ]
 }

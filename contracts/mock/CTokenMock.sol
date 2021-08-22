@@ -40,7 +40,7 @@ contract CTokenMock is ERC20, CTokenInterface {
         _interestRateModel = interestRateModel;
         _exchangeRate = 200000000000000;
         _supplyRate = 32847953230;
-        _mint(address(this), 10**14); // 1.000.000 cUSDC
+        // _mint(address(this), 10**14); // 1.000.000 cUSDC
     }
 
     function decimals() public view override returns (uint8) {
