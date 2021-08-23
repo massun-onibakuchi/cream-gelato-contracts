@@ -44,13 +44,13 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
     }
 
     uint256 private constant TEN_THOUSAND_BPS = 1e4;
-    uint256 public constant FLASH_FEE_BIPS = 3;
 
     IUniswapV2Router02 public immutable uniswapRouter;
     IPriceOracle public immutable oracle;
     address public immutable CUSDC_ADDRESS;
     address public immutable GELATO;
 
+    uint256 public flashFeeBps;
     uint256 public protectionFeeBps;
 
     mapping(address => EnumerableSet.Bytes32Set) internal _createdProtections;
@@ -104,7 +104,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
                 totalCollateralInEth: totalCollateralInEth,
                 totalBorrowInEth: totalBorrowInEth,
                 protectionFeeBps: protectionFeeBps,
-                flashLoanFeeBps: FLASH_FEE_BIPS
+                flashLoanFeeBps: flashFeeBps
             })
         );
 
@@ -171,13 +171,13 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         address WETH = uniswapRouter.WETH();
 
         // @todo slipage validation
+        // @todo custom path
         if (tokenToBuy == WETH) {
-            path = new address[](3);
-            path[0] = tokenToSell;
-            path[1] = WETH;
-
-            SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
-            uniswapRouter.swapExactTokensForETH(amountToSell, 1, path, address(this), deadline);
+            // path = new address[](3);
+            // path[0] = tokenToSell;
+            // path[1] = WETH;
+            // SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
+            // uniswapRouter.swapExactTokensForETH(amountToSell, 1, path, address(this), deadline);
         } else if (tokenToSell == WETH) {
             /// @notice currently Cream fi does'nt provide crETH flashLoan
             // path[0] = WETH;
@@ -210,21 +210,24 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     /// @notice flashLoan callback function
     /// @dev only crToken can call this function
-    /// @param amount flashborrow amount in underlying token
     /// @param premiums fee in underlying token
     /// @param params encoded parameter
     function executeOperation(
-        address, // sender
+        address sender,
         address, // underlying
-        uint256 amount,
+        uint256, // amount
         uint256 premiums,
         bytes calldata params
     ) external override {
-        (address flashLender, FlashLoanData memory flashLoanData) = abi.decode(params, (address, FlashLoanData));
-        require(msg.sender == flashLender, "flashloan-callback-only-cToken");
+        (, FlashLoanData memory flashLoanData) = abi.decode(params, (address, FlashLoanData));
+        require(
+            address(this) == sender && msg.sender == address(flashLoanData.protectionData.colToken),
+            "flashloan-callback-only-cToken"
+        );
         _executeOperation(premiums, flashLoanData);
     }
 
+    /// @dev swap flashborrow token to debtToken, payback loan,then withdraw col,transfer fee and return flashpayback
     function _executeOperation(uint256 premiums, FlashLoanData memory flashLoanData) internal {
         ProtectionData memory protectionData = flashLoanData.protectionData;
         address onBehalf = flashLoanData.borrower;
@@ -234,17 +237,14 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
             swapData,
             (address, address, uint256)
         );
-
-        uint256 balanceBefore = IERC20(uDebtToken).balanceOf(address(this));
-
-        /// @notice swap  collateral underlying token to debt underlying token
-        _swap(uColToken, uDebtToken, amtBorrowedToSell);
-
-        uint256 receivedDebtTokenAmt = IERC20(uDebtToken).balanceOf(address(this)) - balanceBefore;
-
-        /// @notice payback debt to cToken
-        _paybackToCToken(protectionData.debtToken, IERC20(uDebtToken), onBehalf, receivedDebtTokenAmt);
-
+        {
+            uint256 balanceBefore = IERC20(uDebtToken).balanceOf(address(this));
+            /// @notice swap  collateral underlying token to debt underlying token
+            _swap(uColToken, uDebtToken, amtBorrowedToSell);
+            uint256 receivedDebtTokenAmt = IERC20(uDebtToken).balanceOf(address(this)) - balanceBefore;
+            /// @notice payback debt to cToken
+            _paybackToCToken(protectionData.debtToken, IERC20(uDebtToken), onBehalf, receivedDebtTokenAmt);
+        }
         uint256 fees = (amtBorrowedToSell * protectionFeeBps) / TEN_THOUSAND_BPS;
         uint256 amountToWithdraw = amtBorrowedToSell + fees + premiums;
         /// @notice Withdraw collateral (including fees) and flashloan premium.
@@ -268,13 +268,23 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         debtToken.repayBorrowBehalf(borrower, debtToRepay);
     }
 
+    /// @dev assuming user pre-approved this contract using colToken
+    /// @param colToken cToken to be redeemed
+    /// @param onBehalf protection user
+    /// @param to receiver of token
+    /// @param amountToWithdraw amount of collateral underlying to be redeemed
     function _withdrawCollateral(
         CToken colToken,
         address onBehalf,
         address to,
         uint256 amountToWithdraw
     ) internal {
-        SafeERC20.safeTransferFrom(colToken, onBehalf, to, amountToWithdraw);
+        SafeERC20.safeTransferFrom(
+            colToken,
+            onBehalf,
+            to,
+            (amountToWithdraw * EXP_SCALE) / colToken.exchangeRateStored()
+        );
         colToken.redeemUnderlying(amountToWithdraw);
     }
 

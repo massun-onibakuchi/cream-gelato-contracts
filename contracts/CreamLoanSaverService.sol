@@ -82,4 +82,12 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
     function removeTokenFromWhiteList(CToken cToken) public onlyOwner {
         delete whiteListedTokens[address(cToken)];
     }
+
+    function setProtectionFeeBps(uint256 _protectionFeeBps) public onlyOwner {
+        protectionFeeBps = _protectionFeeBps;
+    }
+
+    function setFlashFeeBps(uint256 _flashFeeBps) public onlyOwner {
+        flashFeeBps = _flashFeeBps;
+    }
 }
