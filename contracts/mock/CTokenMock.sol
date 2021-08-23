@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/CTokenInterface.sol";
 import "../interfaces/IFlashloanReceiver.sol";
 
+import "hardhat/console.sol";
+
 contract CTokenMock is ERC20, CTokenInterface {
     address private uToken;
     address private _interestRateModel;
@@ -16,7 +18,7 @@ contract CTokenMock is ERC20, CTokenInterface {
     uint256 private _getCash;
     address private _comptroller;
 
-    uint256 public constant FLASH_FEE_BIPS = 3;
+    uint256 public flashFeeBps;
     /**
      * @notice Container for borrow balance information
      * @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
@@ -111,7 +113,7 @@ contract CTokenMock is ERC20, CTokenInterface {
         return (0, balanceOf(account), borrowBalanceStored(account), _exchangeRate);
     }
 
-    function exchangeRateStored() public view returns (uint256) {
+    function exchangeRateStored() public view override returns (uint256) {
         return _exchangeRate;
     }
 
@@ -126,14 +128,24 @@ contract CTokenMock is ERC20, CTokenInterface {
     ) external override {
         IERC20 uToken_ = IERC20(underlying());
         uint256 balanceBefore = uToken_.balanceOf(address(this));
-        uint256 fee = (amount * FLASH_FEE_BIPS) / 10000;
-        require(uToken_.transfer(receiver, amount), "flash-lend-token");
+        uint256 fee = (amount * flashFeeBps) / 10000;
 
+        uint256 receiverBalanceBefore = uToken_.balanceOf(receiver);
+        console.log("receiverBalanceBefore :>>", receiverBalanceBefore);
+        require(uToken_.transfer(receiver, amount), "flash-lend-token");
         // 3. update totalBorrows
         // totalBorrows = add_(totalBorrows, amount);
 
+        uint256 receiverBalanceAfterTransfer = uToken_.balanceOf(receiver);
+        console.log("receiverBalanceAfterTransfer :>>", receiverBalanceAfterTransfer);
+
         IFlashloanReceiver(receiver).executeOperation(msg.sender, underlying(), amount, fee, params);
 
+        uint256 receiverBalanceAfterExe = uToken_.balanceOf(receiver);
+        uint256 balanceAfter = uToken_.balanceOf(address(this));
+        console.log("receiverBalanceAfterExe :>>", receiverBalanceAfterExe);
+        console.log("balanceBefore :>>", balanceBefore);
+        console.log("balanceBefore-balanceAfter :>>", balanceBefore - balanceAfter);
         // 6. update reserves and internal cash and totalBorrows
         // uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
         // totalReserves = add_(totalReserves, reservesFee);

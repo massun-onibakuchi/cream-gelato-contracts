@@ -46,5 +46,5 @@ interface CTokenInterface is ICTokenFlashLoan, IERC20 {
 
     // function exchangeRateCurrent() external returns (uint256);
 
-    // function exchangeRateStored() external view returns (uint256);
+    function exchangeRateStored() external view returns (uint256);
 }
