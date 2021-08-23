@@ -6,13 +6,13 @@ import { creamFixture } from "./fixtures"
 use(require("chai-bignumber")())
 
 const toWei = ethers.utils.parseEther
+const amount = toWei("10")
+const EXP_SCALE = toWei("1")
 
-describe("Test", async function () {
+describe("CreamAccountDataProvider", async function () {
     // const amount = BigNumber.from(10).pow(24);
     const wallets = waffle.provider.getWallets()
     const [wallet, lp] = wallets
-    const amount = toWei("10")
-    const EXP_SCALE = toWei("1")
     const DECIMALS = [6, 18]
     const INITIAL_HEALTH_FACTOR = toWei("9")
     const ETH_PRICE = EXP_SCALE.mul("1000") // 1 ETH = 1000$

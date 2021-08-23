@@ -21,6 +21,15 @@ contract CreamLoanSaverServiceTest is CreamLoanSaverService {
         return _calculateColAmtToBorrow(_protectionDataCompute);
     }
 
+    function flashLoan(
+        ICTokenFlashLoan flashLender,
+        address receiver,
+        uint256 amount,
+        FlashLoanData memory flashLoanData
+    ) public {
+        _flashLoan(flashLender, receiver, amount, flashLoanData);
+    }
+
     function swap(
         address tokenToSell,
         address tokenToBuy,
