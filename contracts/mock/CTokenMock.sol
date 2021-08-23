@@ -121,38 +121,60 @@ contract CTokenMock is ERC20, CTokenInterface {
         return (balanceOf(account) * _exchangeRate) / 10**18;
     }
 
+    /// @notice flash loan AAVE v1, CREAM
+    // function flashLoan(
+    //     address receiver,
+    //     uint256 amount,
+    //     bytes calldata params
+    // ) external override {
+    //     IERC20 uToken_ = IERC20(underlying());
+    //     uint256 balanceBefore = uToken_.balanceOf(address(this));
+    //     uint256 fee = (amount * flashFeeBps) / 10000;
+
+    //     uint256 receiverBalanceBefore = uToken_.balanceOf(receiver);
+    //     require(uToken_.transfer(receiver, amount), "flash-lend-token");
+
+    //     // 3. update totalBorrows
+    //     // totalBorrows = add_(totalBorrows, amount);
+
+    //     uint256 receiverBalanceAfterTransfer = uToken_.balanceOf(receiver);
+    //     IFlashloanReceiver(receiver).executeOperation(msg.sender, underlying(), amount, fee, params);
+
+    //     uint256 receiverBalanceAfterExe = uToken_.balanceOf(receiver);
+    //     uint256 balanceAfter = uToken_.balanceOf(address(this));
+
+    //     // 6. update reserves and internal cash and totalBorrows
+    //     // uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
+    //     // totalReserves = add_(totalReserves, reservesFee);
+    //     // internalCash = add_(cashBefore, totalFee);
+    //     // totalBorrows = sub_(totalBorrows, amount);
+
+    //     require(uToken_.balanceOf(address(this)) >= balanceBefore + fee, "balance-inconsistent");
+    // }
+
+    /// @dev Flash loan, AAVE v2, currently crToken does'nt support AAVE v2 style flash loan
     function flashLoan(
         address receiver,
         uint256 amount,
         bytes calldata params
     ) external override {
         IERC20 uToken_ = IERC20(underlying());
-        uint256 balanceBefore = uToken_.balanceOf(address(this));
         uint256 fee = (amount * flashFeeBps) / 10000;
 
-        uint256 receiverBalanceBefore = uToken_.balanceOf(receiver);
-        console.log("receiverBalanceBefore :>>", receiverBalanceBefore);
+        require(uToken_.balanceOf(address(this)) > amount, "liquidity-inconsistent");
         require(uToken_.transfer(receiver, amount), "flash-lend-token");
-        // 3. update totalBorrows
-        // totalBorrows = add_(totalBorrows, amount);
 
-        uint256 receiverBalanceAfterTransfer = uToken_.balanceOf(receiver);
-        console.log("receiverBalanceAfterTransfer :>>", receiverBalanceAfterTransfer);
+        // totalBorrows = add_(totalBorrows, amount);
 
         IFlashloanReceiver(receiver).executeOperation(msg.sender, underlying(), amount, fee, params);
 
-        uint256 receiverBalanceAfterExe = uToken_.balanceOf(receiver);
-        uint256 balanceAfter = uToken_.balanceOf(address(this));
-        console.log("receiverBalanceAfterExe :>>", receiverBalanceAfterExe);
-        console.log("balanceBefore :>>", balanceBefore);
-        console.log("balanceBefore-balanceAfter :>>", balanceBefore - balanceAfter);
-        // 6. update reserves and internal cash and totalBorrows
         // uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
         // totalReserves = add_(totalReserves, reservesFee);
         // internalCash = add_(cashBefore, totalFee);
         // totalBorrows = sub_(totalBorrows, amount);
 
-        require(uToken_.balanceOf(address(this)) >= fee + balanceBefore, "balance-inconsistent");
+        // pull
+        require(uToken_.transferFrom(receiver, address(this), amount + fee));
     }
 
     function setExchangeRateStored(uint256 _rate) public returns (uint256) {

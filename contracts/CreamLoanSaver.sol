@@ -189,11 +189,14 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
             path[1] = WETH;
             path[2] = tokenToBuy;
 
-            SafeERC20.safeApprove(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
+            _approveERC20(IERC20(tokenToSell), address(uniswapRouter), amountToSell);
             uniswapRouter.swapExactTokensForTokens(amountToSell, 1, path, address(this), deadline);
         }
     }
 
+    // @note
+    /// @dev Only flash loans are supported, such as AAVE v2, where the borrower only has to return the amount of tokens borrowed in the flash loan plus the fee.
+    /// This means flash loans, such as Aave v1 or current Cream , which require a constant amount of tokens to be held by the protocol, do not work well.
     /// @param receiver : The Flash Loan contract address you deployed.
     /// @param amount : Keep in mind that the decimal of amount is dependent on crToken's underlying asset.
     /// @param flashLoanData : encoded parameter for executeOperation().
@@ -232,7 +235,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         ProtectionData memory protectionData = flashLoanData.protectionData;
         address onBehalf = flashLoanData.borrower;
         bytes memory swapData = flashLoanData.swapData;
-        // uTokenToSell = collateral uToken, tokenToBuy = debt uToken
+
         (address uColToken, address uDebtToken, uint256 amtBorrowedToSell) = abi.decode(
             swapData,
             (address, address, uint256)
@@ -252,8 +255,13 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         /// @notice transfer fees to Gelato
         SafeERC20.safeTransfer(IERC20(uColToken), GELATO, fees);
-        /// @notice transfer flashborrow + premiums to cToken
-        SafeERC20.safeTransfer(IERC20(uColToken), address(protectionData.colToken), amtBorrowedToSell + premiums);
+
+        // AAVE v1 don't work,use AAVE v2
+        // @notice transfer flashborrow + premiums to cToken
+        // SafeERC20.safeTransfer(IERC20(uColToken), address(protectionData.colToken), amtBorrowedToSell + premiums);
+
+        /// @notice
+        _approveERC20(IERC20(uColToken), address(protectionData.colToken), amtBorrowedToSell + premiums);
     }
 
     function _paybackToCToken(
@@ -262,9 +270,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         address borrower,
         uint256 debtToRepay
     ) internal {
-        // Approves 0 first to comply with tokens that implement the anti frontrunning approval fix
-        SafeERC20.safeApprove(uDebtToken, address(debtToken), 0);
-        SafeERC20.safeApprove(uDebtToken, address(debtToken), debtToRepay);
+        _approveERC20(uDebtToken, address(debtToken), debtToRepay);
         debtToken.repayBorrowBehalf(borrower, debtToRepay);
     }
 
@@ -286,6 +292,16 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
             (amountToWithdraw * EXP_SCALE) / colToken.exchangeRateStored()
         );
         colToken.redeemUnderlying(amountToWithdraw);
+    }
+
+    /// @dev Approves 0 first to comply with tokens that implement the anti frontrunning approval fix
+    function _approveERC20(
+        IERC20 token,
+        address spender,
+        uint256 amount
+    ) internal {
+        SafeERC20.safeApprove(token, spender, 0);
+        SafeERC20.safeApprove(token, spender, amount);
     }
 
     /// @notice cream's price oracle proxy wrapper

@@ -17,7 +17,7 @@ use(require("chai-bignumber")())
 const toWei = ethers.utils.parseEther
 const EXP_SCALE = toWei("1")
 
-describe("CreamLoanSaver", async function () {
+describe("CreamLoanSaverService", async function () {
     const wallets = waffle.provider.getWallets()
     const [wallet, lp, gelato, treasury, pokeMe] = wallets
     const DECIMALS = [6, 18]
@@ -139,30 +139,6 @@ describe("CreamLoanSaver", async function () {
 
         return amtToBorrowInEth.mul(EXP_SCALE).div(data.colFactor).mul(EXP_SCALE).div(TOKEN_PRICES[0])
     }
-    it("_paybackToCToken", async function () {
-        expect(await cToken1.borrowBalanceStored(wallet.address)).to.eq(borrowAmount)
-        await token1.mint(loanSaver.address, borrowAmount)
-        await loanSaver.paybackToCToken(cToken1.address, token1.address, wallet.address, borrowAmount)
-        expect(await cToken1.borrowBalanceStored(wallet.address)).to.eq(0)
-    })
-    it("_withdrawCollateral", async function () {
-        await cToken0.connect(wallet).approve(loanSaver.address, ethers.constants.MaxUint256)
-        await loanSaver.withdrawCollateral(cToken0.address, wallet.address, loanSaver.address, mintAmount)
-        expect(await cToken0.balanceOf(wallet.address)).to.eq(0)
-        expect(await token0.balanceOf(loanSaver.address)).to.eq(mintAmount)
-    })
-    it("_swap", async function () {
-        const amountIn = BigNumber.from(10).pow(DECIMALS[0])
-        const amountOut = toWei("0.001")
-        await token0.mint(loanSaver.address, amountIn)
-        await router.setupMock(pair.address, amountOut)
-
-        expect(await token1.balanceOf(loanSaver.address)).to.eq(0)
-        await loanSaver.swap(token0.address, token1.address, amountIn)
-        expect(await token0.balanceOf(loanSaver.address)).to.eq(0)
-        expect(await token1.balanceOf(loanSaver.address)).to.eq(amountOut)
-    })
-
     it("_flashLoan", async function () {
         const amountIn = BigNumber.from(10).pow(DECIMALS[0])
         const amountOut = toWei("0.001")
