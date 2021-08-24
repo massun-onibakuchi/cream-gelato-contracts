@@ -81,15 +81,6 @@ describe("CreamAccountDataProvider", async function () {
         const totalCollateral = totalCollateralInEth.mul(ETH_PRICE).div(EXP_SCALE)
         const totalBorrow = totalBorrowInEth.mul(ETH_PRICE).div(EXP_SCALE)
 
-        // console.log("totalCollateralInEth :>> ", totalCollateralInEth.toString())
-        // console.log("totalBorrowInEth :>> ", totalBorrowInEth.toString())
-        // console.log("totalCollateral :>> ", totalCollateral.toString())
-        // console.log("totalBorrow :>> ", totalBorrow.toString())
-        // console.log(
-        //     "totalCollateral.mul(EXP_SCALE).div(totalBorrow) :>> ",
-        //     totalCollateral.mul(EXP_SCALE).div(totalBorrow).toString(),
-        // )
-        console.log("totalCollateral.sub(totalBorrow).toString() :>> ", totalCollateral.sub(totalBorrow).toString())
         await comptroller.setAccountLiquidity(wallet.address, totalCollateral.sub(totalBorrow))
         return { totalCollateral, totalBorrow }
     }
