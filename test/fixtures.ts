@@ -7,7 +7,8 @@ import {
     ComptrollerMock,
     PriceOracleMock,
     PokeMe,
-    PokeMeReady,
+    LoanSaverResolver,
+    CreamLoanSaverServiceTest,
     UniswapV2Router02Mock,
     UniswapV2PairMock,
 } from "../typechain"
@@ -63,47 +64,21 @@ export const creamFixture: Fixture<{
     return { token0, token1, cToken0, cToken1, comptroller, oracle, router, pair }
 }
 
-// export const gelatoFixture: Fixture<{
-//     token0: ERC20Mock
-//     token1: ERC20Mock
-//     cToken0: CTokenMock
-//     cToken1: CTokenMock
-//     comptroller: ComptrollerMock
-//     oracle: PriceOracleMock
-// }> = async () => {
-//     const ERC20MockFactory = await ethers.getContractFactory("ERC20Mock")
-//     const token0 = (await ERC20MockFactory.deploy("Token0", "TOKEN0")) as ERC20Mock
-//     const token1 = (await ERC20MockFactory.deploy("Token1", "TOKEN1")) as ERC20Mock
-
-//     const CTokenMockFactory = await ethers.getContractFactory("CTokenMock")
-
-//     return { token0, token1, cToken0, cToken1, comptroller, oracle }
-// }
-
-// factory = await Factory.deploy(ethers.constants.AddressZero);
-// const createPairTx = await factory.createPair(token0.address, token1.address);
-// const pairAddr = (await getEvents(factory, createPairTx)).find(e => e.name == "PairCreated").args[2];
-// pair = (await ethers.getContractAt("UniswapV2Pair", pairAddr)) as IUniswapV2Pair;
-
-// export const uniswapMockFixture: Fixture<{
-//     token0: ERC20Mock
-//     token1: ERC20Mock
-//     cToken0: CTokenMock
-//     cToken1: CTokenMock
-//     comptroller: ComptrollerMock
-// }> = async () => {
-//     const UniswapV2Router02Mock = await ethers.getContractFactory("UniswapV2Router02Mock")
-//     const router = (await UniswapV2Router02Mock.deploy([cToken0.address, cToken1.address])) as UniswapV2Router02Mock
-
-//     return { token0, token1, cToken0, cToken1, router }
-// }
-
-// // const addLiquidity = async (signer: Wallet, pair, token0: ERC20, token1: ERC20, amount = toWei("1")) => {
-// //     await token0.mint(pair.address, amount)
-// //     await token1.mint(pair.address, amount)
-// //     await pair.connect(signer).mint(signer.address)
-// // }
-// // const redeemLpToken = async (signer: Wallet, amount) => {
-// //     await pair.connect(signer).approve(migrator.address, amount)
-// //     await migrator.redeemLpToken(pair.address)
-// // }
+export const gelatoDeployment = async (gelato, treasury, cusdc, comptroller, router, oracle, owner) => {
+    const [PokeMe, LoanSaverResolver, CreamLoanSaverServiceTest] = await Promise.all([
+        ethers.getContractFactory("PokeMe"),
+        ethers.getContractFactory("LoanSaverResolver"),
+        ethers.getContractFactory("CreamLoanSaverServiceTest", owner),
+    ])
+    const pokeMe = (await PokeMe.deploy(gelato.address, treasury.address)) as PokeMe
+    const loanSaverService = (await CreamLoanSaverServiceTest.deploy(
+        pokeMe.address,
+        cusdc.address,
+        gelato.address,
+        comptroller.address,
+        router.address,
+        oracle.address,
+    )) as CreamLoanSaverServiceTest
+    const resolver = (await LoanSaverResolver.deploy(loanSaverService.address)) as LoanSaverResolver
+    return { pokeMe, resolver, loanSaverService }
+}

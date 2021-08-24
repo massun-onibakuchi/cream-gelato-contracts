@@ -42,7 +42,7 @@
         "verify": "yarn hint && yarn test",
         "test": "yarn hardhat test --network hardhat",
         "typechain": "hardhat typechain",
-        "lint": "yarn solhint 'contracts/**/*.sol' && yarn prettier -c './**/*.ts'",
+        "lint": "yarn solhint 'contracts/**/*.sol' && yarn prettier -c 'test/**/*.ts'",
         "format:sol": "yarn prettier --write contracts/**",
         "format": "yarn format:sol && yarn prettier --write test/**/*.ts",
         "hint": "solhint \"contracts/**/*.sol\"",
