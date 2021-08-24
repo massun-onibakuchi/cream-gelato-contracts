@@ -37,12 +37,12 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
         bool _useTaskTreasuryFunds
     ) public {
         bytes32 protectionId = keccak256(
-            abi.encodePacked(thresholdHealthFactor, wantedHealthFactor, colToken, debtToken, _resolverData)
+            abi.encode(msg.sender, thresholdHealthFactor, wantedHealthFactor, colToken, debtToken, _resolverData)
         );
 
         require(_createdProtections[msg.sender].contains(protectionId) == false, "already-started-protection");
         require(
-            wantedHealthFactor >= thresholdHealthFactor && thresholdHealthFactor > 1,
+            wantedHealthFactor > thresholdHealthFactor && thresholdHealthFactor > EXP_SCALE,
             "invalid-health-factor-input"
         );
         require(colToken != debtToken, "collateral-debt-same");
@@ -69,7 +69,7 @@ contract CreamLoanSaverService is CreamLoanSaver, Ownable {
     }
 
     function cancelProtection(bytes32 protectionId) public {
-        require(_createdProtections[msg.sender].contains(protectionId) == false, "protection-not-found");
+        require(_createdProtections[msg.sender].contains(protectionId), "protection-not-found");
         _createdProtections[msg.sender].remove(protectionId);
         delete _protectionData[protectionId];
         emit ProtectionCanceled(msg.sender, protectionId);

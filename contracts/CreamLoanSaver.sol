@@ -90,7 +90,7 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
         // check if healthFactor is under threshold
         require(collateralFactorMantissa > 0, "collateral-factor-zero");
-        require(healthFactor > protectionData_.thresholdHealthFactor, "health-factor-not-under-threshold");
+        require(protectionData_.thresholdHealthFactor > healthFactor, "health-factor-not-under-threshold");
         require(ethPerColToken > 0, "collateral-price-zero");
 
         // Calculate repay amount and debtToken amount to flash borrow
@@ -321,6 +321,10 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
 
     function getUserProtectionAt(address account, uint256 index) external view override returns (bytes32 protectionId) {
         return _createdProtections[account].at(index);
+    }
+
+    function getUserProtectionData(bytes32 id) external view returns (ProtectionData memory) {
+        return _protectionData[id];
     }
 
     /// @dev this function expected to be called by Gelato resolver in `checker()`
