@@ -55,12 +55,4 @@ contract CreamLoanSaverServiceTest is CreamLoanSaverService {
     ) public {
         _withdrawCollateral(colToken, onBehalf, to, amountToWithdraw);
     }
-
-    // function getUnderlyingPrice(CToken cToken) public view returns (uint256 price) {
-    //     return _getUnderlyingPrice(cToken);
-    // }
-
-    // function getUsdcEthPrice() public view returns (uint256 price) {
-    //     return _getUsdcEthPrice();
-    // }
 }
