@@ -66,14 +66,14 @@ describe("CreamLoanSaver", async function () {
         await oracle.setPrice(cToken0.address, TOKEN_PRICES[0])
         await oracle.setPrice(cToken1.address, TOKEN_PRICES[1])
 
-        await setup(mintAmount, borrowAmount)
+        await setup()
 
         const exchangeRate = await cToken0.exchangeRateStored()
         expect(await cToken0.balanceOf(wallet.address)).to.eq(toWei("1").mul(mintAmount).div(exchangeRate))
         expect(await token1.balanceOf(wallet.address)).to.eq(toWei("1").add(borrowAmount))
         expect(await cToken1.borrowBalanceStored(wallet.address)).to.eq(borrowAmount)
     })
-    const setup = async (mintAmount, borrowAmount) => {
+    const setup = async () => {
         // fund
         await token0.mint(pair.address, toWei("1")) // fund
         await token1.mint(pair.address, toWei("1")) // fund
@@ -86,11 +86,6 @@ describe("CreamLoanSaver", async function () {
         await token0.approve(cToken0.address, mintAmount)
         await cToken0.connect(wallet).mint(mintAmount)
         await cToken1.connect(wallet).borrow(borrowAmount)
-
-        const totalCollateralInEth = TOKEN_PRICES[0].mul(mintAmount.mul(9).div(10)).div(EXP_SCALE)
-        const totalBorrowInEth = TOKEN_PRICES[1].mul(borrowAmount).div(EXP_SCALE)
-        const totalCollateral = totalCollateralInEth.mul(ETH_PRICE).div(EXP_SCALE)
-        const totalBorrow = totalBorrowInEth.mul(ETH_PRICE).div(EXP_SCALE)
 
         await comptroller.setAccountLiquidity(wallet.address, totalCollateral.sub(totalBorrow))
     }
