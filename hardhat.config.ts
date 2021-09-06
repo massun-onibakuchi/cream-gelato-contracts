@@ -1,19 +1,19 @@
-import "dotenv/config";
-import { HardhatUserConfig } from "hardhat/config";
-import "@typechain/hardhat";
-import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-ethers";
-import "hardhat-deploy";
-import "hardhat-etherscan-abi";
-import "hardhat-dependency-compiler";
+import "dotenv/config"
+import { HardhatUserConfig } from "hardhat/config"
+import "@typechain/hardhat"
+import "@nomiclabs/hardhat-waffle"
+import "@nomiclabs/hardhat-ethers"
+import "hardhat-deploy"
+import "hardhat-etherscan-abi"
+import "hardhat-dependency-compiler"
 
-const MAINNET_ALCHEMY_API_KEY = process.env.MAINNET_ALCHEMY_API_KEY;
-const ROPSTEN_ALCHEMY_API_KEY = process.env.ROPSTEN_ALCHEMY_API_KEY;
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
-const BLOCK_NUMBER = process.env.BLOCK_NUMBER;
-const MNEMONIC = process.env.MNEMONIC;
+const MAINNET_ALCHEMY_API_KEY = process.env.MAINNET_ALCHEMY_API_KEY
+const ROPSTEN_ALCHEMY_API_KEY = process.env.ROPSTEN_ALCHEMY_API_KEY
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY
+const BLOCK_NUMBER = process.env.BLOCK_NUMBER
+const MNEMONIC = process.env.MNEMONIC
 
-if (!MAINNET_ALCHEMY_API_KEY) throw new Error("ALCHEMY_API_KEY_NOT_FOUND");
+if (!MAINNET_ALCHEMY_API_KEY) throw new Error("ALCHEMY_API_KEY_NOT_FOUND")
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -46,8 +46,20 @@ const config: HardhatUserConfig = {
         apiKey: ETHERSCAN_API_KEY,
     },
     namedAccounts: {
-        deployer: {
+        wallet: {
             default: 0,
+        },
+        deployer: {
+            default: 1,
+        },
+        owner: {
+            default: 1,
+        },
+        receiver: {
+            default: 2,
+        },
+        gelato: {
+            default: 5,
         },
     },
     solidity: {
@@ -78,6 +90,6 @@ const config: HardhatUserConfig = {
         cache: "./cache",
         artifacts: "./artifacts",
     },
-};
+}
 
-export default config;
+export default config

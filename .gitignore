@@ -10,6 +10,7 @@
 artifacts
 cache
 typechain
+deployments/
 
 # hardhat-dependency-compiler
 hardhat-dependency-compiler/

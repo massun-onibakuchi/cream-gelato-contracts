@@ -42,6 +42,8 @@
         "verify": "yarn hint && yarn test",
         "test": "yarn hardhat test --network hardhat",
         "typechain": "hardhat typechain",
+        "chain": "hardhat node --no-deploy",
+        "deploy": "hardhat deploy",
         "lint": "yarn solhint 'contracts/**/*.sol' && yarn prettier -c 'test/**/*.ts'",
         "format:sol": "yarn prettier --write contracts/**",
         "format": "yarn format:sol && yarn prettier --write test/**/*.ts",
