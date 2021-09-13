@@ -157,7 +157,7 @@ describe("CreamLoanSaverService", async function () {
         expect(await loanSaverService.getUserProtectionAt(wallet.address, 0)).to.eq(protectionId)
         expect(await loanSaverService.isUnderThresholdHealthFactor(wallet.address)).to.be.false
 
-        const [threshold, wanted, colToken, debtToken] = await loanSaverService.getUserProtectionData(protectionId)
+        const [threshold, wanted, colToken, debtToken] = await loanSaverService.getProtectionData(protectionId)
         expect(threshold).to.eq(thresholdHealthFactor)
         expect(wanted).to.eq(wantedHealthFactor)
         expect(colToken).to.eq(cToken0.address)
