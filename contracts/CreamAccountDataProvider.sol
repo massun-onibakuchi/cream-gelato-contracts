@@ -14,6 +14,25 @@ abstract contract CreamAccountDataProvider {
         comptroller = _comptroller;
     }
 
+    function getUserReserveData(address asset, address account)
+        public
+        view
+        returns (
+            uint256 balanceUnderlying,
+            uint256 debtUnderlying,
+            uint256 exchangeRateStored,
+            uint256 borrowRatePerBlock,
+            uint256 supplyRatePerBlock
+        )
+    {
+        CToken cToken = CToken(asset);
+        balanceUnderlying = cToken.balanceOfUnderlying(account);
+        debtUnderlying = cToken.borrowBalanceStored(account);
+        exchangeRateStored = cToken.exchangeRateStored();
+        borrowRatePerBlock = cToken.borrowRatePerBlock();
+        supplyRatePerBlock = cToken.supplyRatePerBlock();
+    }
+
     function getUserAccountData(address account)
         public
         view

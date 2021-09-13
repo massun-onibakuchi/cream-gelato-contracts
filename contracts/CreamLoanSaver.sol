@@ -18,6 +18,31 @@ import "hardhat/console.sol";
 contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IFlashloanReceiver {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
+    struct ProtectionFullData {
+        bytes32 protectionId;
+        uint256 thresholdHealthFactor;
+        uint256 wantedHealthFactor;
+        CToken colToken;
+        CToken debtToken;
+        /* 
+        AccountData collateral
+            {
+                uint256 balanceUnderlying,
+                uint256 debtUnderlying,
+                uint256 exchangeRateStored,
+                uint256 borrowRatePerBlock,
+                uint256 supplyRatePerBlock
+            }
+        AccountData debt
+            {
+                uint256 balanceUnderlying,
+                uint256 debtUnderlying,
+                uint256 exchangeRateStored,
+                uint256 borrowRatePerBlock,
+                uint256 supplyRatePerBlock
+            }
+    */
+    }
     struct ProtectionData {
         uint256 thresholdHealthFactor;
         uint256 wantedHealthFactor;
@@ -319,12 +344,33 @@ contract CreamLoanSaver is PokeMeReady, CreamAccountDataProvider, ILoanSaver, IF
         price = oracle.getUnderlyingPrice(CToken(CUSDC_ADDRESS)) / 1e12;
     }
 
-    function getUserProtectionAt(address account, uint256 index) external view override returns (bytes32 protectionId) {
+    function getUserProtectionAt(address account, uint256 index) external view override returns (bytes32) {
         return _createdProtections[account].at(index);
     }
 
-    function getUserProtectionData(bytes32 id) external view returns (ProtectionData memory) {
+    function getUserProtectionCount(address account) external view override returns (uint256) {
+        return _createdProtections[account].length();
+    }
+
+    function getProtectionData(bytes32 id) external view returns (ProtectionData memory) {
         return _protectionData[id];
+    }
+
+    function getUserProtectionDataByIndex(address account, uint256 index)
+        external
+        view
+        returns (ProtectionFullData memory)
+    {
+        bytes32 id = _createdProtections[account].at(index);
+        ProtectionData memory data = _protectionData[id];
+        return
+            ProtectionFullData({
+                protectionId: id,
+                thresholdHealthFactor: data.thresholdHealthFactor,
+                wantedHealthFactor: data.wantedHealthFactor,
+                colToken: data.colToken,
+                debtToken: data.debtToken
+            });
     }
 
     /// @dev this function expected to be called by Gelato resolver in `checker()`

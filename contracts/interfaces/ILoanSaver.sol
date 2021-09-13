@@ -6,5 +6,7 @@ interface ILoanSaver {
 
     function isUnderThresholdHealthFactor(address account) external view returns (bool);
 
-    function getUserProtectionAt(address account, uint256 index) external view returns (bytes32 protectionId);
+    function getUserProtectionAt(address account, uint256 index) external view returns (bytes32);
+
+    function getUserProtectionCount(address account) external view returns (uint256);
 }

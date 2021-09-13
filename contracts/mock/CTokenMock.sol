@@ -121,6 +121,14 @@ contract CTokenMock is ERC20, CTokenInterface {
         return (balanceOf(account) * _exchangeRate) / 10**18;
     }
 
+    function borrowRatePerBlock() public view override returns (uint256) {
+        _supplyRate;
+    }
+
+    function supplyRatePerBlock() public view override returns (uint256) {
+        _supplyRate;
+    }
+
     /// @notice flash loan AAVE v1, CREAM
     // function flashLoan(
     //     address receiver,

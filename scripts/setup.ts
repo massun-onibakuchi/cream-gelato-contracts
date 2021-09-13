@@ -1,5 +1,6 @@
 import hre, { ethers } from "hardhat"
 import { BigNumber, Contract } from "ethers"
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 
 const toWei = ethers.utils.parseEther
 const EXP_SCALE = toWei("1")
@@ -7,7 +8,7 @@ const EXP_SCALE = toWei("1")
 const main = async () => {
     const { deployments, getNamedAccounts, ethers } = hre
     const { get } = deployments
-    const { walletAddress, ownerAddress } = await getNamedAccounts()
+    const { wallet: walletAddress, owner: ownerAddress } = await getNamedAccounts()
     const owner = await ethers.getSigner(ownerAddress)
     const wallet = await ethers.getSigner(walletAddress)
 
@@ -46,6 +47,7 @@ const main = async () => {
     await oracle.setPrice(cToken0.address, TOKEN_PRICES[0])
     await oracle.setPrice(cToken1.address, TOKEN_PRICES[1])
     await fund([token0, token1], [cToken0, cToken1], pairD.address, wallet)
+
     await setLiquidity(
         [token0, token1],
         [cToken0, cToken1],
@@ -59,21 +61,30 @@ const main = async () => {
     await loanSaverService.connect(owner).addTokenToWhiteList(cToken0.address)
     await loanSaverService.connect(owner).addTokenToWhiteList(cToken1.address)
 }
-const fund = async (tokens, cTokens, pair, wallet) => {
-    await tokens[0].mint(pair.address, toWei("1"))
-    await tokens[1].mint(pair.address, toWei("1"))
+const fund = async (tokens: Contract[], cTokens: Contract[], pairAddress: string, wallet: SignerWithAddress) => {
+    await tokens[0].mint(pairAddress, toWei("1"))
+    await tokens[1].mint(pairAddress, toWei("1"))
     await tokens[0].mint(wallet.address, toWei("1"))
     await tokens[1].mint(wallet.address, toWei("1"))
     await tokens[0].mint(cTokens[0].address, toWei("1"))
     await tokens[1].mint(cTokens[1].address, toWei("1"))
 }
-const setLiquidity = async (tokens, cTokens, comptroller, mintAmount, borrowAmount, prices, ethPrice, wallet) => {
+const setLiquidity = async (
+    tokens: Contract[],
+    cTokens: Contract[],
+    comptroller,
+    mintAmount,
+    borrowAmount,
+    prices,
+    ethPrice,
+    wallet: SignerWithAddress,
+) => {
     const totalCollateralInEth = prices[0].mul(mintAmount.mul(9).div(10)).div(EXP_SCALE)
     const totalBorrowInEth = prices[1].mul(borrowAmount).div(EXP_SCALE)
     const totalCollateral = totalCollateralInEth.mul(ethPrice).div(EXP_SCALE)
     const totalBorrow = totalBorrowInEth.mul(ethPrice).div(EXP_SCALE)
     await comptroller.setAssetsIn(wallet.address, [cTokens[0].address, cTokens[1].address])
-    await tokens[0].approve(cTokens[0].address, mintAmount)
+    await tokens[0].connect(wallet).approve(cTokens[0].address, mintAmount)
     await cTokens[0].connect(wallet).mint(mintAmount)
     await cTokens[1].connect(wallet).borrow(borrowAmount)
     await comptroller.setAccountLiquidity(wallet.address, totalCollateral.sub(totalBorrow))
