@@ -3,6 +3,9 @@ Automated Health Factor Maintenance Proof of Concept
 
 Cream Fi and Gelato Network integration
 
+## Frontend
+Protocol Monorepo including frontend [here](https://github.com/massun-onibakuchi/cream-gelato-loan-protection)
+
 see Notes section
 
 ## Concept
@@ -33,6 +36,8 @@ To install dependencies, run
 ### Complipe
 `yarn compile`
 
+### Deploy
+`yarn deploy`
 ### Test
 `yarn test`
 
