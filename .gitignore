@@ -7,9 +7,9 @@
 *.log
 
 # hardhat
-artifacts
-cache
-typechain
+artifacts/
+cache/
+typechain/
 deployments/
 
 # hardhat-dependency-compiler
@@ -25,7 +25,4 @@ coverage.json
 # Solidity Visual Developer
 
 # 
-/ext
-
-# todo.md
-todo.md
+*.idea
